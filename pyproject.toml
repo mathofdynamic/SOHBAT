@@ -1,0 +1,22 @@
+[project]
+name = "sohbat"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = ["moonshine-voice==0.1.5", "sounddevice", "PySide6-Essentials==6.10.3", "pynput", "numpy", "scipy", "platformdirs", "comtypes==1.4.17"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["sohbat*"]
+
+[tool.mypy]
+ignore_missing_imports = true
+check_untyped_defs = true
+
+[tool.ruff]
+line-length = 100
+
+[tool.setuptools.package-data]
+sohbat = ["assets/fonts/*", "assets/*.svg", "assets/brand/*"]
