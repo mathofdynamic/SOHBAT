@@ -1,4 +1,4 @@
-﻿![SOHBAT — Your voice. Your words. Your device.](docs/assets/banner.png)
+![SOHBAT — Your voice. Your words. Your device.](docs/assets/banner.png)
 
 # SOHBAT
 
@@ -122,7 +122,7 @@ Finalization time is **not** release-to-paste latency. Cold process-to-ready tim
 - A model-load failure currently requires correcting the model path and relaunching.
 - Clipboard restoration can fail if another process owns the clipboard; failures are logged.
 - Screen-reader announcements and 200% text scaling have not been fully validated.
-- The recording surface uses alpha translucency, rather than native Windows acrylic blur.
+- The recording surface uses a clipped, sampled desktop blur rather than native Windows acrylic. If desktop sampling is unavailable, it uses a solid readable fallback.
 
 ## Project structure
 
@@ -146,3 +146,13 @@ docs/              Model instructions, branding and README assets
 SOHBAT source is licensed under [MIT](LICENSE). Speech recognition uses [Moonshine Voice](https://github.com/moonshine-ai/moonshine). Inter is bundled under its [SIL Open Font License](sohbat/assets/fonts/OFL.txt).
 
 The microphone logo and banner were created with image generation for this project. See [branding notes](docs/BRANDING.md). Model weights and third-party dependencies retain their own licenses.
+
+### Backdrop blur
+
+The recording capsule blurs the desktop directly behind it while keeping its caption sharp. The material refreshes at most ten times a second while visible, and reuses its cached background during expansion/collapse to keep motion smooth. Reduced transparency disables sampling and uses a solid surface. Pixels remain in memory and are discarded when the overlay hides.
+
+The sampler briefly excludes only its own window through [Windows display affinity](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowdisplayaffinity), restores the previous setting immediately, and applies [Qt's blur effect](https://doc.qt.io/qtforpython-6/PySide6/QtWidgets/QGraphicsBlurEffect.html) before clipping the result to the capsule.
+
+Run `.venv/Scripts/python scripts/verify_backdrop.py` for a controlled desktop-pattern check, native captures, and edge-energy/focus/fallback evidence.
+
+![Backdrop blur over a controlled striped desktop pattern](docs/assets/backdrop-blur.png)

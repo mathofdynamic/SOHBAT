@@ -7,6 +7,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt, QTimer
 from PySide6.QtGui import QColor, QCursor, QFont, QLinearGradient, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QApplication, QWidget
 
+from sohbat.backdrop_windows import DesktopBackdrop
 from sohbat.ui.typography import install_font
 
 
@@ -48,12 +49,18 @@ class Pill(QWidget):
         self.dismiss.setSingleShot(True)
         self.dismiss.timeout.connect(self.fade_out)
         self.configure()
+        self.backdrop = DesktopBackdrop()
+        application = QApplication.instance()
+        if application is not None:
+            application.aboutToQuit.connect(self.backdrop.close)
 
     def configure(self, reduced_motion=False, reduced_transparency=False):
         enabled = ctypes.c_int(1)
         ctypes.windll.user32.SystemParametersInfoW(0x1042, 0, ctypes.byref(enabled), 0)
         self.reduced_motion = reduced_motion or not bool(enabled.value)
         self.reduced_transparency = reduced_transparency
+        if hasattr(self, "backdrop") and reduced_transparency:
+            self.backdrop.hide()
         self.update()
 
     def fade_out(self):
@@ -76,6 +83,8 @@ class Pill(QWidget):
             screen = QApplication.screenAt(QCursor.pos()) or QApplication.primaryScreen()
             rect = screen.availableGeometry()
             self.move(rect.center().x()-self.width()//2, rect.bottom()-self.height()-24)
+            if not self.reduced_transparency:
+                self.backdrop.refresh(self, force=True)
             self.show()
         if changed:
             self.dismiss.stop()
@@ -90,6 +99,7 @@ class Pill(QWidget):
         self.update()
 
     def hideEvent(self, event):
+        self.backdrop.hide()
         self.timer.stop()
         self.dismiss.stop()
         self.width_spring.value, self.height_spring.value, self.alpha.value = 44, 30, 0
@@ -109,6 +119,8 @@ class Pill(QWidget):
         if self.closing and self.alpha.value < .012:
             self.hide()
             return
+        if not self.reduced_transparency and abs(self.width_spring.value-self.width_spring.target) < 1 and self.alpha.value > .99:
+            self.backdrop.refresh(self)
         self.update()
 
     def paintEvent(self, event):
@@ -121,7 +133,14 @@ class Pill(QWidget):
         radius = height/2
         path = QPainterPath()
         path.addRoundedRect(rect, radius, radius)
-        painter.setBrush(QColor(20, 23, 29, 248 if self.reduced_transparency else 224))
+        blurred = not self.reduced_transparency and self.backdrop.image is not None
+        image = self.backdrop.image
+        if blurred and image is not None:
+            painter.save()
+            painter.setClipPath(path)
+            painter.drawPixmap(-self.backdrop.padding, -self.backdrop.padding, image)
+            painter.restore()
+        painter.setBrush(QColor(20, 23, 29, 160 if blurred else 255))
         painter.setPen(QPen(QColor(255, 255, 255, 48), 1))
         painter.drawPath(path)
         painter.setClipPath(path)
