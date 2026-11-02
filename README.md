@@ -6,11 +6,11 @@
 
 SOHBAT runs Moonshine Tiny Streaming on your computer. After the initial dependency and model download, normal dictation works offline. No account, cloud transcription, or API key is required.
 
-> Preview release. English only. Windows 11 has been tested.
+> English only. Windows 11 has been tested.
 
 ## Install on Windows
 
-Download [SOHBAT Setup 0.1.1 for Windows x64](https://github.com/mathofdynamic/SOHBAT/releases/download/v0.1.1/SOHBAT-Setup-0.1.1-windows-x64.exe) from the [release page](https://github.com/mathofdynamic/SOHBAT/releases/tag/v0.1.1). The installer includes the English model and Python runtime; no separate download is needed. It is unsigned, so Windows may display a publisher warning. Verify the download against the release's `SHA256SUMS.txt`.
+Download [SOHBAT Setup 0.1.3 for Windows x64](https://github.com/mathofdynamic/SOHBAT/releases/download/v0.1.3/SOHBAT-Setup-0.1.3-windows-x64.exe) from the [release page](https://github.com/mathofdynamic/SOHBAT/releases/tag/v0.1.3). The installer includes the English model and Python runtime; no separate download is needed. It is unsigned, so Windows may display a publisher warning. Verify the download against the release's `SHA256SUMS.txt`.
 
 Installation is per user and does not require administrator access. Open SOHBAT from Start, then use its tray icon for Settings. Enable **Launch SOHBAT when I sign in** to start with Windows.
 
