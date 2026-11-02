@@ -29,6 +29,7 @@ class Events(QObject):
     result = Signal(str, object)
     level = Signal(float)
     reset = Signal()
+    model_status = Signal(str)
 
 
 class Worker(threading.Thread):
@@ -45,8 +46,12 @@ class Worker(threading.Thread):
         started = 0.0
         try:
             from sohbat.engine.moonshine_engine import MoonshineEngine
-            engine = MoonshineEngine(self.config.model_path)
-            logger.info("Model ready")
+            try:
+                engine = MoonshineEngine(self.config.model_path, self.config.model_arch)
+                logger.info("Model ready")
+            except Exception as error:
+                logger.exception("Model unavailable")
+                self.events.state.emit("error", str(error))
             while True:
                 try:
                     command, value = self.commands.get(timeout=.02 if active else None)
@@ -55,13 +60,33 @@ class Worker(threading.Thread):
                 if command == "quit":
                     break
                 try:
+                    if command == "model":
+                        if active:
+                            self.events.model_status.emit("Finish recording, then select Download and use again.")
+                            continue
+                        replacement = MoonshineEngine(value[0], value[1])
+                        candidate = replace(self.config, model_path=value[0], model_arch=value[1])
+                        try:
+                            candidate.save()
+                        except Exception:
+                            replacement.close()
+                            raise
+                        if engine is not None:
+                            engine.close()
+                        engine = replacement
+                        self.config.__dict__.update(candidate.__dict__)
+                        self.events.state.emit("done", "Model ready")
+                        self.events.model_status.emit("Model ready. Your selection is saved.")
                     if command == "start" and not active:
+                        if engine is None:
+                            raise RuntimeError("Download a model in Settings first")
                         target = value
                         mic.start(self.config.mic_device)
                         engine.start_stream()
                         active, started = True, time.monotonic()
                         self.events.state.emit("listening", "")
                     if active:
+                        assert engine is not None
                         samples = mic.drain()
                         if len(samples):
                             engine.feed_audio(samples)
@@ -89,13 +114,16 @@ class Worker(threading.Thread):
                                 self.events.state.emit("done", "Short tap ignored")
                 except Exception as error:
                     logger.exception("Dictation failed")
+                    if command == "model":
+                        self.events.model_status.emit(f"Switch failed: {error}")
                     try:
                         mic.stop()
                     except Exception:
                         logger.exception("Microphone cleanup failed")
                     active = False
                     try:
-                        engine.finalize()
+                        if engine is not None:
+                            engine.finalize()
                     except Exception:
                         logger.exception("Stream cleanup failed")
                     self.events.state.emit("error", str(error))
@@ -184,6 +212,8 @@ def main():
         config.__dict__.update(candidate.__dict__)
         pill.configure(config.reduced_motion, config.reduced_transparency)
     settings = Settings(config, apply, pill)
+    events.model_status.connect(settings.download_status.setText)
+    settings.model_requested.connect(lambda path, arch: worker.commands.put(("model", (path, arch))))
 
     def pause():
         nonlocal paused

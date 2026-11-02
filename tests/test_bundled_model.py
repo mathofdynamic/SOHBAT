@@ -23,3 +23,14 @@ def test_upgrade_preserves_preferences_and_external_model(tmp_path, monkeypatch)
     before = (config_module.ROOT/'config.json').read_bytes()
     assert Config.load() == original
     assert (config_module.ROOT/'config.json').read_bytes() == before
+
+def test_missing_larger_model_falls_back_with_tiny_architecture(tmp_path, monkeypatch):
+    monkeypatch.setattr(config_module, 'ROOT', tmp_path/'preferences')
+    monkeypatch.setattr(config_module, 'LEGACY_ROOT', tmp_path/'legacy')
+    bundled = tmp_path/'tiny'
+    bundled.mkdir()
+    monkeypatch.setattr(config_module, 'bundled_model_path', lambda: str(bundled))
+    Config(model_path=str(tmp_path/'missing'), model_arch=5).save()
+    loaded = Config.load()
+    assert loaded.model_path == str(bundled)
+    assert loaded.model_arch == 2

@@ -166,3 +166,7 @@ The sampler briefly excludes only its own window through [Windows display affini
 Run `.venv/Scripts/python scripts/verify_backdrop.py` for a controlled desktop-pattern check, native captures, and edge-energy/focus/fallback evidence.
 
 ![Backdrop blur over a controlled striped desktop pattern](docs/assets/backdrop-blur.png)
+
+### Download and switch models
+
+Open Settings ? Models. Choose Tiny Streaming (fastest), Small Streaming, or Medium Streaming, then **Download and use**. Progress appears in Settings. Downloads require internet; recognition remains offline. A successful switch is saved immediately and applies without restarting. If loading fails, the current model remains active. Finish recording before switching. All three choices are English only.

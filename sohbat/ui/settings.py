@@ -1,9 +1,10 @@
 """Compact, grouped desktop preferences."""
 import logging
+import threading
 from pathlib import Path
 
 import sounddevice as sd
-from PySide6.QtCore import Qt, QTimer, Slot
+from PySide6.QtCore import QObject, Qt, QTimer, Signal, Slot
 from PySide6.QtGui import QCursor, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
@@ -32,6 +33,7 @@ def pretty_shortcut(chord):
 
 
 class Settings(QDialog):
+    model_requested = Signal(str, int)
     def __init__(self, config, apply, pill=None):
         super().__init__()
         install_font(QApplication.instance())
@@ -61,7 +63,7 @@ class Settings(QDialog):
         side.addWidget(self.note('Dictation, on device.'))
         side.addSpacing(26)
         self.navigation = QListWidget()
-        self.navigation.addItems(['Recording', 'Text', 'Appearance'])
+        self.navigation.addItems(['Recording', 'Text', 'Appearance', 'Models'])
         self.navigation.setAccessibleName('Settings categories')
         side.addWidget(self.navigation, 1)
         side.addWidget(self.note('English · Tiny Streaming\nOffline by design'))
@@ -132,6 +134,16 @@ class Settings(QDialog):
         page.addWidget(self.note('Appears while you speak. Keyboard focus stays in your app.'))
         page.addStretch()
         self.theme.currentIndexChanged.connect(self.update_theme)
+        page = self.page('Models', 'Download English models for offline dictation.')
+        self.models = self.combo([('Tiny Streaming', 2), ('Small Streaming', 4), ('Medium Streaming', 5)], config.model_arch)
+        page.addWidget(self.models)
+        self.download_button = QPushButton('Download and use')
+        self.download_button.clicked.connect(self.download_model)
+        page.addWidget(self.download_button)
+        self.download_status = QLabel('Download and use saves immediately. Internet is needed for download only. Larger models require more memory.')
+        self.download_status.setWordWrap(True)
+        page.addWidget(self.download_status)
+        page.addStretch()
         self.navigation.setCurrentRow(0)
 
         footer = QFrame()
@@ -344,6 +356,16 @@ class Settings(QDialog):
         self.activateWindow()
         logging.getLogger(__name__).info('Settings opened: visible=%s', self.isVisible())
 
+    def download_model(self):
+        self.download_button.setEnabled(False)
+        self.download_task = ModelDownload(self.models.currentData(), self)
+        self.download_task.progress.connect(lambda value, message: self.download_status.setText(f'{value:.0%}: {message}'))
+        self.download_task.ready.connect(self.model_requested.emit)
+        self.download_task.ready.connect(lambda *_: self.download_status.setText("Download complete. Loading model..."))
+        self.download_task.failed.connect(self.download_status.setText)
+        self.download_task.finished.connect(lambda: self.download_button.setEnabled(True))
+        self.download_task.start()
+
     def submit(self):
         try:
             appearance = {'theme': self.theme.currentData(), 'reduced_motion': self.reduced_motion.isChecked(), 'reduced_transparency': self.reduced_transparency.isChecked()}
@@ -352,3 +374,31 @@ class Settings(QDialog):
         except Exception as error:
             logging.getLogger(__name__).exception('Could not save preferences')
             self.feedback.setText(f'Could not save: {error}')
+
+
+class ModelDownload(QObject):
+    finished = Signal()
+
+    def start(self):
+        threading.Thread(target=self.run, daemon=True).start()
+    progress = Signal(float, str)
+    ready = Signal(str, int)
+    failed = Signal(str)
+
+    def __init__(self, arch, parent):
+        super().__init__(parent)
+        self.arch = arch
+
+    def run(self):
+        try:
+            from moonshine_voice import ModelArch
+            from moonshine_voice.download import get_model_for_language
+
+            from sohbat.config import ROOT
+            path, arch = get_model_for_language('en', ModelArch(self.arch), cache_root=ROOT/'models', on_progress=self.progress.emit)
+            self.ready.emit(str(path), int(arch))
+        except Exception as error:
+            logging.getLogger(__name__).exception('Model download failed')
+            self.failed.emit(f'Download failed: {error}')
+        finally:
+            self.finished.emit()

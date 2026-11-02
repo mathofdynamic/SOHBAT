@@ -9,10 +9,10 @@ from numpy.typing import NDArray
 class MoonshineEngine:
     """All methods are called on one worker thread."""
 
-    def __init__(self, model_path: str):
+    def __init__(self, model_path: str, model_arch: int = 2):
         if not model_path or not Path(model_path).is_dir():
             raise FileNotFoundError("Model missing. Run scripts/download-model.ps1 first.")
-        self.transcriber = Transcriber(model_path, ModelArch.TINY_STREAMING)
+        self.transcriber = Transcriber(model_path, ModelArch(model_arch))
         self.stream: Any = None
         self.lines: dict[int, str] = {}
 

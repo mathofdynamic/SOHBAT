@@ -27,6 +27,7 @@ class Config:
     autostart: bool = False
     pill_position: str = "bottom-center"
     strip_fillers: bool = True
+    model_arch: int = 2
     model_path: str = ""
     compatibility: bool = True
     theme: str = "system"
@@ -46,6 +47,8 @@ class Config:
         if not isinstance(data, dict):
             raise TypeError("Configuration must be an object")
         result = cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+        if result.model_arch not in (2, 4, 5):
+            raise ValueError("Unsupported speech model")
         if result.mode not in ("hold", "toggle") or result.paste_method not in ("clipboard", "typing"):
             raise ValueError("Invalid dictation mode or paste method")
         if not isinstance(result.hotkey, str) or not isinstance(result.model_path, str):
@@ -55,7 +58,9 @@ class Config:
         if type(result.autostart) is not bool or type(result.strip_fillers) is not bool:
             raise ValueError("Invalid configuration toggle")
         if not result.model_path or not Path(result.model_path).is_dir():
-            result.model_path = bundled_model_path() or result.model_path
+            bundled = bundled_model_path()
+            if bundled:
+                result.model_path, result.model_arch = bundled, 2
         if legacy:
             model = Path(result.model_path)
             legacy_models = LEGACY_ROOT / "models"

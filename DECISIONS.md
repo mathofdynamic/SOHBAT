@@ -34,3 +34,5 @@
 - Dependency notices and full Qt LGPL/GPL texts are distributed with replaceable shared libraries and source links. The unsigned preview does not claim code-signing trust.
 
 - Launch the GUI executable with normal window visibility. Windows `STARTF_USESHOWWINDOW` from a hidden process launch can suppress the first Settings window despite Qt reporting it visible; the app itself starts tray-only.
+
+- Model selection supports English streaming architectures 2, 4 and 5 through the installed Moonshine downloader with progress callbacks. Downloads run on a background daemon; engine replacement stays on the existing audio worker and saves only after successful loading. Explicit user-triggered downloads are the only runtime network operation.
