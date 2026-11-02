@@ -3,8 +3,8 @@ import logging
 from pathlib import Path
 
 import sounddevice as sd
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QKeySequence
+from PySide6.QtCore import Qt, QTimer, Slot
+from PySide6.QtGui import QCursor, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -332,10 +332,17 @@ class Settings(QDialog):
             self.preview_pill.hide()
         super().hideEvent(event)
 
+    @Slot()
     def open_preferences(self):
+        was_hidden = not self.isVisible()
         self.showNormal()
+        screen = QApplication.screenAt(QCursor.pos()) or QApplication.primaryScreen()
+        if screen is not None and (was_hidden or not screen.availableGeometry().intersects(self.frameGeometry())):
+            bounds = screen.availableGeometry()
+            self.move(bounds.center()-self.rect().center())
         self.raise_()
         self.activateWindow()
+        logging.getLogger(__name__).info('Settings opened: visible=%s', self.isVisible())
 
     def submit(self):
         try:

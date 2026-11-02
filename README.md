@@ -44,7 +44,7 @@ For a console launch:
 .venv/Scripts/python -m sohbat
 ```
 
-The app lives in the system tray. **Settings** opens preferences; **Pause** suspends the shortcut; **Quit** shuts down the worker and microphone.
+The app lives in the system tray. Click or double-click its icon to open Settings, or right-click and choose **Settings**; **Pause** suspends the shortcut; **Quit** shuts down the worker and microphone.
 
 ### Using the shortcut
 

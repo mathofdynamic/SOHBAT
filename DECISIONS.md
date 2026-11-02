@@ -20,3 +20,5 @@
 - Multilingual/Whisper support is deferred. The default engine is English Tiny Streaming, architecture 2.
 
 - Windows system-backdrop and accent prototypes did not preserve the animated capsule clip and were discarded. The final implementation uses documented temporary capture exclusion on our own window plus Qt blur, with a half-resolution cache updated at up to 10 Hz only while visible and settled. Affinity restoration is guarded by finally blocks. No background pixel data is written to disk by the app. Reduced transparency and sampling failure use a fully opaque fallback.
+
+- Tray Trigger and DoubleClick explicitly open preferences. Settings menu activation waits40ms for the shell menu to release focus, then restores and raises a centered preferences window. Native tray callback regression is exercised by scripts/smoke_tray_windows.py against Qt6.10.3.
