@@ -1,4 +1,4 @@
-﻿param([switch]$SkipBuild)
+param([switch]$SkipBuild)
 $ErrorActionPreference = 'Stop'
 Set-Location "$PSScriptRoot/.."
 if (!$SkipBuild) {
@@ -6,6 +6,8 @@ if (!$SkipBuild) {
     if ($LASTEXITCODE) { exit $LASTEXITCODE }
 }
 $installRoot = Join-Path $env:LOCALAPPDATA 'Programs/SOHBAT'
+$installed = Get-ItemProperty 'HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/{D0E533D9-A5F2-44B0-B513-BDA47EE40618}_is1' -ErrorAction SilentlyContinue
+if ($installed -and $installed.InstallLocation) { $installRoot = $installed.InstallLocation.TrimEnd('\') }
 $legacyRoot = Join-Path $env:LOCALAPPDATA 'Programs/Flowlet'
 $allowedExecutables = @((Join-Path $installRoot 'SOHBAT.exe'), (Join-Path $legacyRoot 'Flowlet.exe'))
 $running = Get-Process SOHBAT,Flowlet -ErrorAction SilentlyContinue | Where-Object { $_.Path -in $allowedExecutables }
@@ -36,5 +38,5 @@ $shortcut.TargetPath = $exe
 $shortcut.WorkingDirectory = $installRoot
 $shortcut.IconLocation = $exe
 $shortcut.Save()
-Start-Process -FilePath $exe -WorkingDirectory $installRoot -WindowStyle Hidden
+Start-Process -FilePath $exe -WorkingDirectory $installRoot -WindowStyle Normal
 Write-Output "Installed and started $exe"

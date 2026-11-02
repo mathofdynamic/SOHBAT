@@ -5,6 +5,8 @@ from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QFont, QFontDatabase, QIcon
 from PySide6.QtWidgets import QApplication
 
+from sohbat import __version__
+
 
 def install_font(app: QCoreApplication | None) -> None:
     if not isinstance(app, QApplication):
@@ -17,6 +19,7 @@ def install_font(app: QCoreApplication | None) -> None:
     font.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
     app.setFont(font)
     app.setApplicationName('SOHBAT')
+    app.setApplicationVersion(__version__)
     app.setApplicationDisplayName('SOHBAT')
     app.setWindowIcon(QIcon(str(Path(__file__).resolve().parents[1] / 'assets' / 'brand' / 'app.ico')))
 

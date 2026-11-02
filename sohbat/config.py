@@ -1,5 +1,6 @@
 import json
 import shutil
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -7,6 +8,14 @@ from platformdirs import user_config_dir
 
 ROOT = Path(user_config_dir("SOHBAT", appauthor=False))
 LEGACY_ROOT = Path(user_config_dir("Flowlet", appauthor=False))
+
+
+def bundled_model_path() -> str:
+    if getattr(sys, 'frozen', False):
+        path = Path(sys.executable).parent / 'models' / 'tiny-streaming-en'
+        if path.is_dir():
+            return str(path)
+    return ''
 
 
 @dataclass
@@ -32,7 +41,7 @@ class Config:
             path = LEGACY_ROOT / "config.json"
             legacy = True
         if not path.exists():
-            return cls()
+            return cls(model_path=bundled_model_path())
         data = json.loads(path.read_text(encoding="utf-8-sig"))
         if not isinstance(data, dict):
             raise TypeError("Configuration must be an object")
@@ -45,6 +54,8 @@ class Config:
             raise ValueError("Invalid microphone device")
         if type(result.autostart) is not bool or type(result.strip_fillers) is not bool:
             raise ValueError("Invalid configuration toggle")
+        if not result.model_path or not Path(result.model_path).is_dir():
+            result.model_path = bundled_model_path() or result.model_path
         if legacy:
             model = Path(result.model_path)
             legacy_models = LEGACY_ROOT / "models"

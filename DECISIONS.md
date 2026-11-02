@@ -22,3 +22,15 @@
 - Windows system-backdrop and accent prototypes did not preserve the animated capsule clip and were discarded. The final implementation uses documented temporary capture exclusion on our own window plus Qt blur, with a half-resolution cache updated at up to 10 Hz only while visible and settled. Affinity restoration is guarded by finally blocks. No background pixel data is written to disk by the app. Reduced transparency and sampling failure use a fully opaque fallback.
 
 - Tray Trigger and DoubleClick explicitly open preferences. Settings menu activation waits40ms for the shell menu to release focus, then restores and raises a centered preferences window. Native tray callback regression is exercised by scripts/smoke_tray_windows.py against Qt6.10.3.
+
+
+## Windows installer and version identity
+
+- Inno Setup packages the runtime and verified English Tiny Streaming model for offline first launch. The existing generated icon and banner are embedded; the wizard privately loads Inter.
+- Permanent AppId `{D0E533D9-A5F2-44B0-B513-BDA47EE40618}` and per-user scope identify one installation across releases. Registered install paths are reused; older versions cannot overwrite newer versions.
+- `sohbat.__version__` is the single source for package, executable and installer versions. Release 0.1.1 follows a local 0.1.0 upgrade baseline.
+- Settings, logs and external model paths are preserved. Updates replace only the app-owned runtime and bundled model; obsolete runtime files are removed to prevent mixed dependency versions.
+- Startup registration is retained if previously enabled. Fresh users choose startup in Settings. Updates remain manual to preserve offline operation.
+- Dependency notices and full Qt LGPL/GPL texts are distributed with replaceable shared libraries and source links. The unsigned preview does not claim code-signing trust.
+
+- Launch the GUI executable with normal window visibility. Windows `STARTF_USESHOWWINDOW` from a hidden process launch can suppress the first Settings window despite Qt reporting it visible; the app itself starts tray-only.
