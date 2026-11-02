@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QListWidget,
+    QProgressBar,
     QPushButton,
     QStackedWidget,
     QVBoxLayout,
@@ -66,7 +67,7 @@ class Settings(QDialog):
         self.navigation.addItems(['Recording', 'Text', 'Appearance', 'Models'])
         self.navigation.setAccessibleName('Settings categories')
         side.addWidget(self.navigation, 1)
-        side.addWidget(self.note('English · Tiny Streaming\nOffline by design'))
+        side.addWidget(self.note('English models\nOffline by design'))
         body.addWidget(sidebar)
         self.pages = QStackedWidget()
         body.addWidget(self.pages, 1)
@@ -134,15 +135,44 @@ class Settings(QDialog):
         page.addWidget(self.note('Appears while you speak. Keyboard focus stays in your app.'))
         page.addStretch()
         self.theme.currentIndexChanged.connect(self.update_theme)
-        page = self.page('Models', 'Download English models for offline dictation.')
+        page = self.page('Models', 'A voice model that fits your workflow.')
+        self.active_model = self.note(f'Active model: {self.model_name(config.model_arch)}')
+        page.addWidget(self.active_model)
+        group = self.group(page)
         self.models = self.combo([('Tiny Streaming', 2), ('Small Streaming', 4), ('Medium Streaming', 5)], config.model_arch)
-        page.addWidget(self.models)
-        self.download_button = QPushButton('Download and use')
-        self.download_button.clicked.connect(self.download_model)
-        page.addWidget(self.download_button)
-        self.download_status = QLabel('Download and use saves immediately. Internet is needed for download only. Larger models require more memory.')
+        self.row(group, 'Speech model', 'English, on device', self.models)
+        self.model_description = self.note('')
+        self.models.currentIndexChanged.connect(self.update_model_description)
+        page.addWidget(self.model_description)
+        self.update_model_description()
+        page.addSpacing(10)
+        self.download_panel = QFrame()
+        self.download_panel.setObjectName('group')
+        progress_layout = QVBoxLayout(self.download_panel)
+        progress_layout.setContentsMargins(16, 16, 16, 16)
+        progress_layout.setSpacing(10)
+        progress_header = QHBoxLayout()
+        self.download_status = QLabel('Ready to download')
         self.download_status.setWordWrap(True)
-        page.addWidget(self.download_status)
+        progress_header.addWidget(self.download_status, 1)
+        self.download_percent = QLabel('')
+        progress_header.addWidget(self.download_percent)
+        progress_layout.addLayout(progress_header)
+        self.download_progress = QProgressBar()
+        self.download_progress.setAccessibleName('Model download progress')
+        self.download_progress.setTextVisible(False)
+        self.download_progress.setFixedHeight(6)
+        self.download_progress.setRange(0, 1000)
+        progress_layout.addWidget(self.download_progress)
+        self.download_detail = self.note('Download once. Dictate offline.')
+        progress_layout.addWidget(self.download_detail)
+        page.addWidget(self.download_panel)
+        self.download_panel.hide()
+        self.download_button = QPushButton('Download and use')
+        self.download_button.setObjectName('primary')
+        self.download_button.clicked.connect(self.download_model)
+        page.addWidget(self.download_button, alignment=Qt.AlignmentFlag.AlignLeft)
+        page.addWidget(self.note('Model changes apply immediately. Internet is only needed to download.'))
         page.addStretch()
         self.navigation.setCurrentRow(0)
 
@@ -162,6 +192,7 @@ class Settings(QDialog):
         self.save.clicked.connect(self.submit)
         foot.addWidget(self.save)
         outer.addWidget(footer)
+        self.navigation.currentRowChanged.connect(self.update_footer)
         self.update_theme()
 
     @staticmethod
@@ -312,6 +343,8 @@ class Settings(QDialog):
             QCheckBox::indicator:checked {{ background: #007aff; border: 1px solid #007aff; image: url(none); }}
             QCheckBox:focus {{ outline: 2px solid #007aff; }}
             QPushButton {{ background: {field}; color: {text}; border: 1px solid {border}; border-radius: 7px; padding: 8px 12px; font-weight: 500; }}
+            QProgressBar {{ border: none; background: {border}; border-radius: 3px; }}
+            QProgressBar::chunk {{ background: #007aff; border-radius: 3px; }}
             QPushButton:hover {{ border-color: #007aff; }}
             QPushButton:pressed {{ background: {selection}; }}
             QPushButton:focus {{ border: 2px solid #007aff; padding: 7px 11px; }}
@@ -356,15 +389,60 @@ class Settings(QDialog):
         self.activateWindow()
         logging.getLogger(__name__).info('Settings opened: visible=%s', self.isVisible())
 
+    @staticmethod
+    def model_name(arch):
+        return {2: 'Tiny Streaming', 4: 'Small Streaming', 5: 'Medium Streaming'}.get(arch, 'Speech model')
+
+    def update_footer(self, row):
+        self.save.setVisible(row != 3)
+        self.feedback.setText('Model changes are saved automatically.' if row == 3 else 'Changes apply when you save.')
+
+    def update_model_description(self):
+        self.model_description.setText({2: 'Fastest response. Lowest memory use.', 4: 'A balance of recognition quality and speed.', 5: 'Highest recognition quality. Uses more memory.'}[self.models.currentData()])
+
     def download_model(self):
+        self.downloading_arch = self.models.currentData()
         self.download_button.setEnabled(False)
-        self.download_task = ModelDownload(self.models.currentData(), self)
-        self.download_task.progress.connect(lambda value, message: self.download_status.setText(f'{value:.0%}: {message}'))
-        self.download_task.ready.connect(self.model_requested.emit)
-        self.download_task.ready.connect(lambda *_: self.download_status.setText("Download complete. Loading model..."))
-        self.download_task.failed.connect(self.download_status.setText)
-        self.download_task.finished.connect(lambda: self.download_button.setEnabled(True))
+        self.download_button.setText('Downloading...')
+        self.models.setEnabled(False)
+        self.download_panel.show()
+        self.download_status.setText('Preparing download')
+        self.download_percent.setText('')
+        self.download_progress.setRange(0, 0)
+        self.download_detail.setText('Checking model files...')
+        self.download_task = ModelDownload(self.downloading_arch, self)
+        self.download_task.progress.connect(self.show_download_progress)
+        self.download_task.ready.connect(self.model_downloaded)
+        self.download_task.failed.connect(self.show_model_result)
         self.download_task.start()
+
+    def show_download_progress(self, value, message):
+        self.download_progress.setRange(0, 1000)
+        self.download_progress.setValue(round(max(0, min(1, value)) * 1000))
+        self.download_status.setText(f'Downloading {self.model_name(self.downloading_arch)}')
+        self.download_percent.setText(f'{max(0, min(1, value)):.0%}')
+        self.download_detail.setText('Keep SOHBAT open. Your current model stays available.')
+
+    def model_downloaded(self, path, arch):
+        self.download_progress.setRange(0, 0)
+        self.download_percent.setText('')
+        self.download_status.setText('Loading your model')
+        self.download_detail.setText('The download is complete. Preparing offline dictation...')
+        self.download_button.setText('Loading...')
+        self.model_requested.emit(path, arch)
+
+    def show_model_result(self, message):
+        success = message.startswith('Model ready')
+        self.download_progress.setRange(0, 1000)
+        self.download_progress.setValue(1000 if success else 0)
+        self.download_percent.setText('100%' if success else '')
+        self.download_status.setText('Ready for dictation' if success else 'Could not switch models')
+        self.download_detail.setText('Your model is saved and ready to use offline.' if success else message)
+        if success:
+            self.active_model.setText(f'Active model: {self.model_name(self.config.model_arch)}')
+        self.models.setEnabled(True)
+        self.download_button.setEnabled(True)
+        self.download_button.setText('Download and use' if success else 'Try again')
 
     def submit(self):
         try:

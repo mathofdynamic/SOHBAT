@@ -36,3 +36,5 @@
 - Launch the GUI executable with normal window visibility. Windows `STARTF_USESHOWWINDOW` from a hidden process launch can suppress the first Settings window despite Qt reporting it visible; the app itself starts tray-only.
 
 - Model selection supports English streaming architectures 2, 4 and 5 through the installed Moonshine downloader with progress callbacks. Downloads run on a background daemon; engine replacement stays on the existing audio worker and saves only after successful loading. Explicit user-triggered downloads are the only runtime network operation.
+
+- Model downloads show aggregate progress in a themed progress bar; internal filenames stay out of the interface. Download, engine-loading, success and retry states are distinct. Selection is locked until loading finishes, and Models hides the unrelated Save action.

@@ -212,7 +212,7 @@ def main():
         config.__dict__.update(candidate.__dict__)
         pill.configure(config.reduced_motion, config.reduced_transparency)
     settings = Settings(config, apply, pill)
-    events.model_status.connect(settings.download_status.setText)
+    events.model_status.connect(settings.show_model_result)
     settings.model_requested.connect(lambda path, arch: worker.commands.put(("model", (path, arch))))
 
     def pause():
