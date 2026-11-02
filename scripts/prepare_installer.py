@@ -19,7 +19,7 @@ from sohbat.config import Config
 stage = Path('.perfection/installer-payload').resolve()
 stage.mkdir(parents=True, exist_ok=True)
 config = Config.load()
-source = Path(config.model_path) if config.model_path else Path('models/tiny-streaming-en')
+source = Path(config.model_path) if config.model_path and config.model_arch == 2 else Path('models/tiny-streaming-en')
 if not source.is_dir():
     raise SystemExit('English model missing. Run scripts/download-model.ps1 before building.')
 manifest = _stt_dependency_manifest('en', ModelArch.TINY_STREAMING)
